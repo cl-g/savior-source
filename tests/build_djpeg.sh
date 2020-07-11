@@ -17,13 +17,13 @@ extract-bc djpeg
 mkdir obj-savior && pushd obj-savior && cp ../djpeg.bc .
 
 #generate binary to be fuzzed and target bc to be analyzed
-~/work/savior/AFL/afl-clang-fast djpeg.bc -o savior-djpeg -lubsan -lm
+/root/git/savior-source/AFL/afl-clang-fast djpeg.bc -o savior-djpeg -lubsan -lm
 
 #run svf analyzer (llvm-4.0) on the target bc
-~/work/savior/svf/SVF/Release-build/bin/dma -fspta savior-djpeg.bc -savior-label-only -o djpeg.reach.bug -edge djpeg.edge
+/root/git/savior-source/svf/SVF/Release-build/bin/dma -fspta savior-djpeg.bc -savior-label-only -o djpeg.reach.bug -edge djpeg.edge
 
 #run insertbug pass to generate bc runnable by llvm-3.6 (required by klee) with bug coverage infomation
-opt -load /root/work/savior/svf/InsertBugPotential/build/insertpass/libInsertBugPass.so -InsertBug -i djpeg.reach.bug savior-djpeg.bc -o savior-djpeg.dma.bc
+opt -load /root/git/savior-source/svf/InsertBugPotential/build/insertpass/libInsertBugPass.so -InsertBug -i djpeg.reach.bug savior-djpeg.bc -o savior-djpeg.dma.bc
 
 #NOTE: the above 2 steps can be done with dma_wrapper.py in single step
 #
@@ -36,7 +36,7 @@ opt -load /root/work/savior/svf/InsertBugPotential/build/insertpass/libInsertBug
 # -PROG.dma.bc final BC file runnable by klee with bug coverage infomation encoded
 
 echo "Preparation done, please edit the config file and prepare the seeding inputs for fuzzing"
-cp ~/work/savior/coordinator/fuzz.cfg.template fuzz.cfg
-cp -a ~/work/savior/AFL/testcases/images/jpeg/ in
+cp /root/git/savior-source/coordinator/fuzz.cfg.template fuzz.cfg
+cp -a /root/git/savior-source/AFL/testcases/images/jpeg/ in
 echo "target direction: jpeg-9c/obj-savior"
 echo "config template: jpeg-9c/obj-savior/fuzz.cfg"
