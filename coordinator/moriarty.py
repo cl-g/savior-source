@@ -32,8 +32,10 @@ class Moriarty(object):
         self.explorer_cov_file_list = []
         self.explored_tests = []#record tests explored before
 
-        self.fuzzer = Fuzzers.get_afl(config, proj_dir)
-        self.se_factory = SEs.get_explorer_factory(config, proj_dir)#SEs stands for Symbolic Engines
+        #self.fuzzer = Fuzzers.get_afl(config, proj_dir)
+        self.fuzzer = Fuzzers.get_libFuzzer(config, proj_dir)
+
+        self.se_factory = SEs.get_explorer_factory(config, proj_dir)
         self.get_moriarty_config()
         self.switch_oracle = SwitchOracles.get_switch_oracle(config, self.proj_dir)
         self.edge_oracle = EdgeOracles.get_edge_oracle(config, self.target_bin, self.proj_dir)
@@ -53,7 +55,7 @@ class Moriarty(object):
     def get_moriarty_config(self):
         config = ConfigParser.ConfigParser()
         config.read(self.config)
-        if "moriarty" not in config.sections() or "afl" not in config.sections():
+        if "moriarty" not in config.sections() or "libFuzzer" not in config.sections():
             moriarty_info("Config file read error")
             sys.exit()
         try:
@@ -65,10 +67,11 @@ class Moriarty(object):
         self.cov_file_base = config.get("moriarty", "sync_dir").replace("@target", self.proj_dir)
         self.switch_heuristic = config.get("switch oracle","strategy")
         self.max_allow_se_num = int(config.get("moriarty", "max_explorer_instance"))
-        self.num_of_fuzzers = int(config.get("afl", "slave_num"))+1
+        #self.num_of_fuzzers = int(config.get("afl", "slave_num"))+1
         self.num_of_explorers = self.se_factory.get_se_size() * self.max_allow_se_num
         self.is_sym_explorer_activated = True if config.has_option("sym_explorer", "bin") else False
         self.is_conc_explorer_activated = True if config.has_option("conc_explorer", "bin") else False
+
 
         try:
             self.batch_run_seed_num = int(config.get("moriarty", "batch_run_input_num"))
@@ -95,28 +98,12 @@ class Moriarty(object):
             cov = cov + "/.tmp_se_"+str(explorer_id)+".cov"
             self.explorer_cov_file_list.append(cov)
 
-        for slave_id in xrange(self.num_of_fuzzers):
-            #constructing coverage file list
-            #constructing sanitizer_edge file list
-            cov_suffix="/coverage.csv"
-            san_suffix="/edge_sanitizer.csv"
-            cov = self.cov_file_base
-            san = self.cov_file_base
-            if slave_id == 0:
-                cov = cov + "/master" + cov_suffix
-                san = san + "/master" + san_suffix
-            else:
-                cov = cov + "/slave_"+str(slave_id).zfill(6)+cov_suffix
-                san = san + "/slave_"+str(slave_id).zfill(6)+san_suffix
-            self.cov_file_list.append(cov)
-            self.san_file_list.append(san)
-
         self.clean_up_last_session();
 
         #collecting the recommended edges for reasoning
         try:
             self.loc_map = self.proj_dir + '/locmap.csv'
-            self.find_loc_script = config.get("afl","root")+"/find_source_loc.sh"
+            self.find_loc_script = config.get("afl","root")+"/find_source_loc.sh" # still used
             self.recommend_edge_log = config.get("moriarty","recommend_edge_log").replace("@target", self.proj_dir)
         except Exception:
             self.recommend_edge_log = None
