@@ -23,13 +23,13 @@ mkdir obj-savior && pushd obj-savior && cp ../tcpdump.bc .
 
 #generate binary to be fuzzed and target bc to be analyzed
 apt-get install -y libdbus-1-dev
-~/work/savior/AFL/afl-clang-fast tcpdump.bc -o savior-tcpdump -lcrypto -libverbs  -ldbus-1 -lubsan
+/root/git/savior-source/AFL/afl-clang-fast tcpdump.bc -o savior-tcpdump -lcrypto -libverbs  -ldbus-1 -lubsan
 
 #run svf analyzer (llvm-4.0) on the target bc
-~/work/savior/svf/SVF/Release-build/bin/dma -fspta savior-tcpdump.bc -savior-label-only -o tcpdump.reach.bug -edge tcpdump.edge
+/root/git/savior-source/svf/SVF/Release-build/bin/dma -fspta savior-tcpdump.bc -savior-label-only -o tcpdump.reach.bug -edge tcpdump.edge
 
 #run insertbug pass to generate bc runnable by llvm-3.6 (required by klee) with bug coverage infomation
-opt -load /root/work/savior/svf/InsertBugPotential/build/insertpass/libInsertBugPass.so -InsertBug -i tcpdump.reach.bug savior-tcpdump.bc -o savior-tcpdump.dma.bc
+opt -load /root/git/savior-source/svf/InsertBugPotential/build/insertpass/libInsertBugPass.so -InsertBug -i tcpdump.reach.bug savior-tcpdump.bc -o savior-tcpdump.dma.bc
 
 #NOTE: the above 2 steps can be done with dma_wrapper.py in single step
 #
@@ -43,7 +43,7 @@ opt -load /root/work/savior/svf/InsertBugPotential/build/insertpass/libInsertBug
 
 popd
 echo "Preparation done, please edit the config file and prepare the seeding inputs for fuzzing"
-cp ~/work/savior/coordinator/fuzz.cfg.template fuzz.cfg
+cp /root/git/savior-source/coordinator/fuzz.cfg.template fuzz.cfg
 mkdir -p tcpdump/obj-savior/in &&  cp tcpdump/tests/02-sunrise-sunset-esp.pcap tcpdump/obj-savior/in
 echo "target direction: tcpdump/obj-savior"
 echo "config template: tcpdump/obj-savior/fuzz.cfg"
