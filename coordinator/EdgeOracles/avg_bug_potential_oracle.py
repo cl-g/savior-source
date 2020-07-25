@@ -195,6 +195,8 @@ class AvgBugPotentialOracle:
     #libFuzzer -cov_suffix_dir get_score()
     def get_score(self, testcase):
         # libFuzzer generates much fewer test cases due to "NEW" than due to "REDUCE". We prefer the "NEW" ones in an effort to avoid testing the same thing twice.
+        # Idea: For some targets it might make sense to caculate score _only_ for "+cov" seeds, because otherwise we will call self.get_path_length() for _every_ test case, which invokes the savior binary for all non-cached test cases.
+        # This takes a lot of time.
         score1 = testcase.endswith("+cov")
         score2 = -os.path.getsize(testcase)
         score3 = -self.get_path_length(testcase)
