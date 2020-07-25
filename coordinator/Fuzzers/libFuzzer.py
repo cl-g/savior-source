@@ -19,13 +19,10 @@ def fuzzer_info(s):
 
 class libFuzzer:
     def __init__(self, config, target):
-        print("init called")
         self.test_id_candidates = {}
         self.config = config
         self.target = target # passed via '-t' to moriarty.py
         self.get_libfuzzer_config()
-        print("init finish")
-
 
     def __repr__(self):
         return "Fuzzer: libFuzzer"
@@ -39,19 +36,19 @@ class libFuzzer:
     def get_libfuzzer_config(self):
         config = ConfigParser.ConfigParser()
         config.read(self.config)
+
         if "libFuzzer" not in config.sections():
-            print "Config file read error"
+            print("Config file read error")
             sys.exit()
         if "auxiliary info" not in config.sections():
-            print "Config file read error"
+            print("Config file read error")
             sys.exit()
 
         self.binary = config.get("libFuzzer", "bin")
         self.corpus_dir = config.get("libFuzzer", "corpus_dir").replace("@target", self.target)
-        print("SET corpusdir to: " + self.binary)
-
         self.cov_suffix_dir = config.get("libFuzzer", "cov_suffix_dir").replace("@target", self.target)
         self.jobs = config.get("libFuzzer", "jobs")
+        self.max_len = config.get("libFuzzer", "max_len")
 
         try:
             self.dictionary = config.get("libFuzzer", "use_dict").replace("@target", self.target)
@@ -61,12 +58,12 @@ class libFuzzer:
         try:
             self.combine_cov_file = config.get("auxiliary info", "cov_edge_file").replace("@target", self.target)
         except NoOptionError:
-            self.combine_cov_file = os.path.join(self.target,".afl_coverage_combination")
+            self.combine_cov_file = os.path.join(self.target, ".afl_coverage_combination")
 
         try:
             self.combine_san_file = config.get("auxiliary info", "bug_edge_file").replace("@target", self.target)
         except NoOptionError:
-            self.combine_san_file = os.path.join(self.target,".savior_sanitizer_combination")
+            self.combine_san_file = os.path.join(self.target, ".savior_sanitizer_combination")
         
     def run(self):
         logger = multiprocessing.log_to_stderr()
@@ -77,8 +74,13 @@ class libFuzzer:
         libfuzzer_args.append("-cov_suffix_dir=" + self.cov_suffix_dir) # dir with suffixed test cases to enable pre_filter()
         libfuzzer_args.append("-reload=1") # Reload in_dir to pick up new test cases from KLEE
         libfuzzer_args.append("-jobs="+self.jobs) # is > 1 required for reload to work?
-        libfuzzer_args.append("-max_len="+str(1024*1024)) # 1 mb
         libfuzzer_args.append("-verbosity=2")
+
+        if self.max_len is not None:
+            libfuzzer_args.append("-max_len="+self.max_len)
+        else:
+            print("Warning: max_len is not specified. libFuzzer will try to infer the maximum input length from the corpus.")
+
         if self.dictionary is not None:
 		    libfuzzer_args.append("-dict="+self.dictionary)
 
