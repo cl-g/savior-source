@@ -364,15 +364,17 @@ bool AFLCoverage::runOnModule(Module &M) {
         // auto meta_loc = MDNode::get(C, ConstantAsMetadata::get(CurLoc));
         for (Instruction& instr : BB.getInstList()) {
           if (MDNode* dbg = instr.getMetadata("dbg")) {
-            DILocation Loc(dbg);
+	    DebugLoc Loc(dbg); //llvm 9
+	    auto *Scope = cast<DIScope>(Loc.getScope());
+            // DILocation Loc(dbg);
             locMap << cur_loc << ","
-                   << Loc.getDirectory().str() << ","
-                   << Loc.getFilename().str() << ","
-                   << Loc.getLineNumber() << "\n";
+                   << Scope->getDirectory().str() << ","
+                   << Scope->getFilename().str() << ","
+                   << Loc.getLine() << "\n";
             if (has_savior_label) {
               labelMap << cur_loc << ","
-                       << Loc.getFilename().str() << ":"
-                       << Loc.getLineNumber() << "\n";
+                       << Scope->getFilename().str() << ":"
+                       << Loc.getLine() << "\n";
             }
             locMapped = true;
             break;
