@@ -236,19 +236,18 @@ class ConcExplorer:
                          "--seed-file="+ktest_seed_dir, # this is actually a single file for now
                          self.target_bc]
 
-
         new_options = list(self.options)
         for _ in xrange(len(new_options)):
             if new_options[_] == "INPUT_FILE":
                 new_options[_] = "A"
         cmd.extend(new_options)
         if self.input_type == "stdin":
-                cmd.append(stdin_sym_flag)
+                cmd.append("--sym-stdin")
                 cmd.append(str(max_len))
         else:
             if not "INPUT_FILE" in self.options:
                 cmd.append("A")
-            cmd.append(file_sym_flag)
+            cmd.append("--sym-files")
             cmd.append("1")
             cmd.append(str(max_len))
         return cmd
