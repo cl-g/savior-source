@@ -7,7 +7,8 @@ import os
 from utils import bcolors
 
 from klee_sym_explorer import *
-from klee_conc_explorer import *
+#from klee_conc_explorer import *
+from klee_conc_explorer_minimal import *
 
 class KleeExplorers:
     def __init__(self, config, proj_dir):
