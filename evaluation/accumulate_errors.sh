@@ -1,7 +1,6 @@
 #!/bin/bash
 ROOT_DIR=/root/git/savior-source/tests/sqlite3-savior-libFuzzer/sqlite3-2/build/obj-savior-bigger
 CORPUS_DIR=$ROOT_DIR/corpus
-#this is actually the libfuzzer binary
 SAVIOR_BINARY=$ROOT_DIR/savior-sqlite3
 STDERR_LOG_DIR=$ROOT_DIR/evaluation_dir/stderr_logs
 
