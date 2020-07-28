@@ -113,7 +113,7 @@ class Moriarty(object):
     def poke_switch_oracle(self):
         if self.switch_oracle.time_to_invoke_explorer():
             if "AFLUnCovSearcher" in self.se_factory.get_heuristics():
-                if not self.only_count_se_cov:
+                if not self.only_count_se_cov: # only_count_se_cov is always true in savior. seems like merge afl coverage was not used.
                     if not utils.merge_coverage_files(self.cov_file_list, self.fuzzer.get_fuzzer_cov_file()):
                         moriarty_info("can't merge the fuzzer cov files, using the old one")
                 if not utils.append_merge_coverage_files(self.explorer_cov_file_list, self.fuzzer.get_fuzzer_cov_file()):
