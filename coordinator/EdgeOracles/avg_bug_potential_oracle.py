@@ -199,10 +199,10 @@ class AvgBugPotentialOracle:
         # This takes a lot of time.
         score1 = testcase.endswith("+cov")
         score2 = -os.path.getsize(testcase)
-        score3 = -self.get_path_length(testcase)
+        #score3 = -self.get_path_length(testcase) # this invokes the savior binary
         # Prefer recently generated test cases
         score4 = os.path.getmtime(testcase)
-        return (score1, score2, score3, score4)
+        return (score1, score2, score4)#score3, score4)
 
 
     def testcase_compare(self, a, b):

@@ -267,8 +267,8 @@ class ConcExplorer:
         args.append("--mode="+ mode)
         args.append("--afl-name="+afl_input)
         args.append("--ktest-name="+ktest)
-        args.append("--bitmodel="+bitmodel);
-        args.append("--inputmode="+inputtype);
+        args.append("--bitmodel="+bitmodel)
+        args.append("--inputmode="+inputtype)
         subprocess.Popen(args).wait()
 
     def terminate_callback(self):
