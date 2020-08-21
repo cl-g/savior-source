@@ -230,22 +230,27 @@ class Moriarty(object):
         self.edge_oracle.terminate_callback()
         self.fuzzer.terminate_callback()
         self.se_factory.terminate_callback()
+        self.se_factory.stop() #kill klee
         moriarty_info("Professor Moriarty terminated, have a nice day : )")
         os._exit(0)
 
     # BEAWARE race condition
     def periodic_callback(self, signal, frame):
         self.switch_oracle.periodic_callback()
+        libFuzzerAlive = self.fuzzer.periodic_callback()
+        if not libFuzzerAlive:
+            print 'libFuzzer terminated, stopping savior.'
+            self.terminate_callback(signal, frame)
         # self.edge_oracle.periodic_callback()
-        # self.fuzzer.periodic_callback()
         # self.se_factory.periodic_callback()
+
 
 def init(target, config):
     moriarty = Moriarty(target, config)
 
     #register signal handlers
     signal.signal(signal.SIGALRM, moriarty.periodic_callback)
-    signal.alarm(3600)#trigger every hour 
+    signal.setitimer(signal.ITIMER_REAL, 10, 10) # ITIMER_REAL -> fire SIGALRM
     signal.signal(signal.SIGINT, moriarty.terminate_callback)
     signal.signal(signal.SIGTERM, moriarty.terminate_callback)
 

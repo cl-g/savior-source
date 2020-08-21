@@ -42,6 +42,7 @@ def terminate_proc_tree(pid, include_parent = False):
     except Exception:
         pass
 
+
 def mkdir_force(abs_dir):
     """
     create new dir, rm the old one if exists
