@@ -72,6 +72,7 @@ class AvgBugPotentialOracle:
             self.only_count_covered_edge = True if config.get("edge oracle", "only_count_covered_edge") == "True" else False
         except Exception:
             self.only_count_covered_edge = True
+        
 
     def load_bb2dom_file(self):
         try:
@@ -138,6 +139,7 @@ class AvgBugPotentialOracle:
             stat['score'] = 0.0
             stat['first_seen'] = seed
             stat['interesting_edges'] = []
+            interesting_blocks = set()
             stat['size'] = os.path.getsize(seed)
             contributing_edge_counter = 0
             for e in set(edges):
@@ -153,12 +155,13 @@ class AvgBugPotentialOracle:
                                 stat['score'] += ne_score
                         except KeyError:
                             pass
-                        if not stat.has_key('interesting_block'):
-                            stat['interesting_block'] = self.edge_to_parentBB[ne]
                 if is_interesting_edge:
                     contributing_edge_counter += 1
                     stat['interesting_edges'].append(e)
+                    interesting_blocks.add(self.edge_to_parentBB[e])
 
+
+            stat["interesting_blocks"] = list(interesting_blocks)
             # it is not used for now, but maybe later could help with debugging
             self.input_to_score_cache[seed] = stat['score']
 
@@ -194,15 +197,14 @@ class AvgBugPotentialOracle:
     
     #libFuzzer -cov_suffix_dir get_score()
     def get_score(self, testcase):
-        # libFuzzer generates much fewer test cases due to "NEW" than due to "REDUCE". We prefer the "NEW" ones in an effort to avoid testing the same thing twice.
+        # libFuzzer generates much fewer test cases due to "NEW" than due to "REDUCE". We prefer the "NEW" ones to not test things twice.
         # Idea: For some targets it might make sense to caculate score _only_ for "+cov" seeds, because otherwise we will call self.get_path_length() for _every_ test case, which invokes the savior binary for all non-cached test cases.
         # This takes a lot of time.
         score1 = testcase.endswith("+cov")
         score2 = -os.path.getsize(testcase)
         #score3 = -self.get_path_length(testcase) # this invokes the savior binary
-        # Prefer recently generated test cases
-        score4 = os.path.getmtime(testcase)
-        return (score1, score2, score4)#score3, score4)
+        score4 = os.path.getmtime(testcase) # Prefer recently generated test cases
+        return (score1, score2, score4)
 
 
     def testcase_compare(self, a, b):
@@ -242,16 +244,16 @@ class AvgBugPotentialOracle:
             except KeyError:
                 edge_ids = []
             try:
-                block_id = stat['interesting_block']
+                block_ids = stat['interesting_blocks']
             except KeyError:
-                block_id = None
+                block_ids = None
             score = stat['score']
             input_file = stat['first_seen']
             if input_file not in result:
                 result[input_file] = {
                     'score': score,
                     'interesting_edges': edge_ids,
-                    'interesting_blocks': [block_id],
+                    'interesting_blocks': block_ids,
                     'size': stat['size'],
                     'input': input_file
                 }

@@ -7,7 +7,7 @@ import os
 from utils import bcolors
 
 from klee_sym_explorer import *
-#from klee_conc_explorer import *
+from klee_conc_explorer import *
 from klee_conc_explorer_minimal import *
 
 class KleeExplorers:
@@ -23,9 +23,13 @@ class KleeExplorers:
         if "klee sym_explorer" in config.sections():
             print "Initialize symbolic explorer"
             self.se_factory.append(SymExplorer(self.config, self.proj_dir))
-        if "klee conc_explorer" in config.sections():
+        if "klee conc_explorer" in config.sections(): # wrapper for SAVIOR KLEE
             print "Initialize concolic explorer"
             self.se_factory.append(ConcExplorer(self.config, self.proj_dir))
+        if "klee conc_explorer_minimal" in config.sections(): # wrapper for my KLEE
+            print "Initialize concolic explorer (minimal)"
+            self.se_factory.append(ConcExplorerMinimal(self.config, self.proj_dir))
+
         self.se_num = int(config.get("moriarty", "max_explorer_instance"))
         assert len(self.se_factory) > 0, "[Error] can't get klee explorers"
 
