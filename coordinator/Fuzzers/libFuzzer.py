@@ -53,6 +53,13 @@ class libFuzzer:
             self.max_len = config.get("libFuzzer", "max_len")
         except Exception:
             self.max_len = None
+        
+        # If positive, indicates the maximum total time in seconds to run the fuzzer. If 0 (the default), run indefinitely.
+        # --> used to conduct experiments for a fixed amount of time
+        try:
+            self.max_total_time = config.get("libFuzzer", "max_total_time")
+        except Exception:
+            self.max_total_time = None
             
         try:
             self.dictionary = config.get("libFuzzer", "use_dict").replace("@target", self.target)
@@ -84,6 +91,11 @@ class libFuzzer:
             libfuzzer_args.append("-max_len="+self.max_len)
         else:
             print("Warning: max_len is not specified. libFuzzer will try to infer the maximum input length from the corpus.")
+        
+        if self.max_total_time is not None:
+            libfuzzer_args.append("-max_total_time="+self.max_total_time)
+        else:
+            print("Warning: max_total_time is not set. libFuzzer will run indefinitely.")
 
         if self.dictionary is not None:
 		    libfuzzer_args.append("-dict="+self.dictionary)
@@ -91,12 +103,12 @@ class libFuzzer:
         try_num = 10000
         os.environ["UBSAN_OPTIONS"] = "log_path=" + self.target + "/ubsan-violations"
         while try_num > 0:
-            p = multiprocessing.Process(target=utils.exec_async, args=[libfuzzer_args], kwargs={})
+            self.p = multiprocessing.Process(target=utils.exec_async, args=[libfuzzer_args], kwargs={})
             print "Starting libFuzzer:", " ".join(libfuzzer_args)
-            p.start()
+            self.p.start()
             time.sleep(3)
             try_num -= 1
-            if p.is_alive():
+            if self.p.is_alive():
                 break
         print "libFuzzer started."
         
@@ -105,8 +117,12 @@ class libFuzzer:
         # self.cleanup_synced_klee_instances(self.out_dir)
         pass
     def periodic_callback(self):
-        """place holder"""
-        pass
+        # If libFuzzer terminated (due to time limit reached), savior will be shut down.
+        if not self.p.is_alive():
+            return False
+        return True
+
+
     """REMOVE all klee_instances under sync_dir"""
     def cleanup_synced_klee_instances(self, sync_dir):
 	    pass
