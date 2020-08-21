@@ -98,7 +98,7 @@ class Moriarty(object):
             cov = cov + "/.tmp_se_"+str(explorer_id)+".cov"
             self.explorer_cov_file_list.append(cov)
 
-        self.clean_up_last_session();
+        self.clean_up_last_session()
 
         #collecting the recommended edges for reasoning
         try:
@@ -114,9 +114,9 @@ class Moriarty(object):
         if self.switch_oracle.time_to_invoke_explorer():
             if "AFLUnCovSearcher" in self.se_factory.get_heuristics():
                 if not self.only_count_se_cov: # only_count_se_cov is always true in savior. seems like merge afl coverage was not used.
-                    if not utils.merge_coverage_files(self.cov_file_list, self.fuzzer.get_fuzzer_cov_file()):
+                    if not utils.merge_coverage_files(self.cov_file_list, self.fuzzer.get_fuzzer_cov_file()): # not used
                         moriarty_info("can't merge the fuzzer cov files, using the old one")
-                if not utils.append_merge_coverage_files(self.explorer_cov_file_list, self.fuzzer.get_fuzzer_cov_file()):
+                if not utils.append_merge_coverage_files(self.explorer_cov_file_list, self.fuzzer.get_fuzzer_cov_file()): #merge se cov files and write to file specified by get_fuzzer_cov_file().
                     moriarty_info("can't append the merged se cov files, using the old one")
 
             if "SANGuidedSearcher" in self.se_factory.get_heuristics():

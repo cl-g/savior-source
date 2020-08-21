@@ -48,8 +48,12 @@ class libFuzzer:
         self.corpus_dir = config.get("libFuzzer", "corpus_dir").replace("@target", self.target)
         self.cov_suffix_dir = config.get("libFuzzer", "cov_suffix_dir").replace("@target", self.target)
         self.jobs = config.get("libFuzzer", "jobs")
-        self.max_len = config.get("libFuzzer", "max_len")
 
+        try:
+            self.max_len = config.get("libFuzzer", "max_len")
+        except Exception:
+            self.max_len = None
+            
         try:
             self.dictionary = config.get("libFuzzer", "use_dict").replace("@target", self.target)
         except Exception:
@@ -73,7 +77,7 @@ class libFuzzer:
         libfuzzer_args.append(self.corpus_dir) # corpus directory
         libfuzzer_args.append("-cov_suffix_dir=" + self.cov_suffix_dir) # dir with suffixed test cases to enable pre_filter()
         libfuzzer_args.append("-reload=1") # Reload in_dir to pick up new test cases from KLEE
-        libfuzzer_args.append("-jobs="+self.jobs) # is > 1 required for reload to work?
+        libfuzzer_args.append("-jobs="+self.jobs)
         libfuzzer_args.append("-verbosity=2")
 
         if self.max_len is not None:
