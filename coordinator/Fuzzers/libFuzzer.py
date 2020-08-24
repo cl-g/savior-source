@@ -65,6 +65,11 @@ class libFuzzer:
             self.dictionary = config.get("libFuzzer", "use_dict").replace("@target", self.target)
         except Exception:
             self.dictionary = None
+        
+        try:
+            self.seed = config.get("libFuzzer", "seed").replace("@target", self.target)
+        except Exception:
+            self.seed = None
 
         try:
             self.combine_cov_file = config.get("auxiliary info", "cov_edge_file").replace("@target", self.target)
@@ -85,7 +90,7 @@ class libFuzzer:
         libfuzzer_args.append("-cov_suffix_dir=" + self.cov_suffix_dir) # dir with suffixed test cases to enable pre_filter()
         libfuzzer_args.append("-reload=1") # Reload in_dir to pick up new test cases from KLEE
         libfuzzer_args.append("-jobs="+self.jobs)
-        libfuzzer_args.append("-verbosity=2")
+        #libfuzzer_args.append("-verbosity=2")
 
         if self.max_len is not None:
             libfuzzer_args.append("-max_len="+self.max_len)
@@ -96,12 +101,18 @@ class libFuzzer:
             libfuzzer_args.append("-max_total_time="+self.max_total_time)
         else:
             print("Warning: max_total_time is not set. libFuzzer will run indefinitely.")
+        
+        if self.seed is not None:
+            libfuzzer_args.append("-seed="+self.seed)
+        else:
+            print("Warning: seed is not set. libFuzzer will choose a random seed.")
 
         if self.dictionary is not None:
 		    libfuzzer_args.append("-dict="+self.dictionary)
 
         try_num = 10000
-        os.environ["UBSAN_OPTIONS"] = "log_path=" + self.target + "/ubsan-violations"
+        #The line below removes ubsan violation output from main .log files -> we need this for evalscript though.
+        #os.environ["UBSAN_OPTIONS"] = "log_path=" + self.target + "/ubsan-violations"
         while try_num > 0:
             self.p = multiprocessing.Process(target=utils.exec_async, args=[libfuzzer_args], kwargs={})
             print "Starting libFuzzer:", " ".join(libfuzzer_args)
