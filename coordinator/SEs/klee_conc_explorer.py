@@ -73,6 +73,7 @@ class ConcExplorer:
         self.bitmodel = config.get("moriarty", "bitmodel")
         self.input_type = config.get("moriarty", "inputtype")
         self.sync_dir_base = config.get("moriarty", "sync_dir").replace("@target", self.target)
+        
         if "AFLUnCovSearcher" in self.get_search_heuristics():
             try:
                 self.fuzzer_cov_file = config.get("auxiliary info", "cov_edge_file").replace("@target", self.target)
@@ -161,7 +162,8 @@ class ConcExplorer:
 
 
 	    #--create sync_dir for new klee instance
-	    new_sync_dir = self.sync_dir_base+"/klee_instance_conc_"+str(pid).zfill(6)+"/queue"
+        # Do not add ' +"/queue"', because AFAIK libfuzzer reload-dir() only looks for seeds in tld + tld+1. so /klee_instance/a.xml is ok, but /klee/instance/queue/a.xml is not found.
+	    new_sync_dir = self.sync_dir_base+"/klee_instance_conc_"+str(pid).zfill(6) #+"/queue"
 	    utils.mkdir_force(new_sync_dir)
 	
 	    #--build klee instance cmd
@@ -289,8 +291,8 @@ class ConcExplorer:
 
         cmd.extend(common_prefix);
 
-        cmd.append("--seed-out-dir=" + ktest_seed_dir)
-        cmd.append(sync_dir_flag + sync_dir)
+        cmd.append("--seed-out-dir=" + ktest_seed_dir) # This is a directory with seed .ktest's given to KLEE.
+        cmd.append(sync_dir_flag + sync_dir) # This is where KLEE outputs the test cases it generated in RAW format.
         cmd.append(self.target_bc)
         new_options = list(self.options)
         for _ in xrange(len(new_options)):

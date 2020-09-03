@@ -34,7 +34,7 @@ class AvgBugPotentialOracle:
         self.load_bb2dom_file()#static collection
         self.load_pair_edges_file()#static collection
 
-        self.fuzzer_input_dir = self.get_fuzzer_queue_dir(config, target_bin)
+        self.fuzzer_input_dir = self.get_fuzzer_queue_dir(config)
         oracle_info("Using fuzzer input dir %s" % self.fuzzer_input_dir)
         self.input_to_edges_cache = {} #cache of seed to edges
         self.input_to_score_cache = {} #cache of seed to score
@@ -43,20 +43,17 @@ class AvgBugPotentialOracle:
     def __repr__(self):
         return "avg-bug-potential"
 
-    def get_fuzzer_queue_dir(self, raw_config, target_bin):
+    def get_fuzzer_queue_dir(self, raw_config):
         config = ConfigParser.ConfigParser()
         config.read(raw_config)
-        target_dir = os.path.dirname(os.path.abspath(target_bin).split()[0])
         self.input_mode = config.get("moriarty", "inputtype")
-        sync_dir = config.get("moriarty", "sync_dir").replace("@target", target_dir)
         try:
             self.batch_run_num = int(config.get("moriarty", "batch_run_input_num"))
         except Exception:
             self.batch_run_num = 1
-        # TODO: read seed from all queues
-        # prefer to use slave queue
-        fuzzer_dir = os.path.join(sync_dir, "slave_000001", "queue")
-        return fuzzer_dir
+
+        return config.get("libFuzzer", "cov_suffix_dir").replace("@target", self.target_dir)
+
 
     def read_queue(self):
         return [f for f in os.listdir(self.fuzzer_input_dir) if os.path.isfile(os.path.join(self.fuzzer_input_dir, f))]
@@ -64,7 +61,7 @@ class AvgBugPotentialOracle:
     def get_oracle_config(self):
         config = ConfigParser.ConfigParser()
         config.read(self.config)
-        self.replay_prog_cmd = config.get("moriarty", "target_bin").replace("@target",self.target_dir)
+        self.replay_prog_cmd = config.get("moriarty", "target_bin").replace("@target",self.target_dir) # savior binary
         try:
             self.bb_to_dom_file = config.get("auxiliary info", "bug_reach_map").replace("@target", self.target_dir)
             self.pair_edge_file = config.get("auxiliary info", "pair_edge_file").replace("@target", self.target_dir)
@@ -75,6 +72,7 @@ class AvgBugPotentialOracle:
             self.only_count_covered_edge = True if config.get("edge oracle", "only_count_covered_edge") == "True" else False
         except Exception:
             self.only_count_covered_edge = True
+        
 
     def load_bb2dom_file(self):
         try:
@@ -141,6 +139,7 @@ class AvgBugPotentialOracle:
             stat['score'] = 0.0
             stat['first_seen'] = seed
             stat['interesting_edges'] = []
+            interesting_blocks = set()
             stat['size'] = os.path.getsize(seed)
             contributing_edge_counter = 0
             for e in set(edges):
@@ -156,12 +155,13 @@ class AvgBugPotentialOracle:
                                 stat['score'] += ne_score
                         except KeyError:
                             pass
-                        if not stat.has_key('interesting_block'):
-                            stat['interesting_block'] = self.edge_to_parentBB[ne]
                 if is_interesting_edge:
                     contributing_edge_counter += 1
                     stat['interesting_edges'].append(e)
+                    interesting_blocks.add(self.edge_to_parentBB[e])
 
+
+            stat["interesting_blocks"] = list(interesting_blocks)
             # it is not used for now, but maybe later could help with debugging
             self.input_to_score_cache[seed] = stat['score']
 
@@ -180,20 +180,32 @@ class AvgBugPotentialOracle:
             self.covered_fuzzer_edges = self.covered_fuzzer_edges | set(edges)
         return len(self.input_to_edges_cache[seed])
 
-    #inspired by QSYM
+    # #inspired by QSYM
+    # def get_score(self, testcase):
+    #     # New coverage is the best
+    #     score1 = testcase.endswith("+cov")
+    #     # NOTE: seed files are not marked with "+cov"
+    #     # even though it contains new coverage
+    #     score2 = "orig:" in testcase
+    #     # Smaller size is better
+    #     score3 = -os.path.getsize(testcase)
+    #     # Shorter path is better
+    #     score4 = -self.get_path_length(testcase)
+    #     # Since name contains id, so later generated one will be chosen earlier
+    #     score5 = testcase
+    #     return (score1, score2, score3, score4, score5)
+    
+    #libFuzzer -cov_suffix_dir get_score()
     def get_score(self, testcase):
-        # New coverage is the best
+        # libFuzzer generates much fewer test cases due to "NEW" than due to "REDUCE". We prefer the "NEW" ones to not test things twice.
+        # Idea: For some targets it might make sense to caculate score _only_ for "+cov" seeds, because otherwise we will call self.get_path_length() for _every_ test case, which invokes the savior binary for all non-cached test cases.
+        # This takes a lot of time.
         score1 = testcase.endswith("+cov")
-        # NOTE: seed files are not marked with "+cov"
-        # even though it contains new coverage
-        score2 = "orig:" in testcase
-        # Smaller size is better
-        score3 = -os.path.getsize(testcase)
-        # Shorter path is better
-        score4 = -self.get_path_length(testcase)
-        # Since name contains id, so later generated one will be chosen earlier
-        score5 = testcase
-        return (score1, score2, score3, score4, score5)
+        score2 = -os.path.getsize(testcase)
+        #score3 = -self.get_path_length(testcase) # this invokes the savior binary
+        score4 = os.path.getmtime(testcase) # Prefer recently generated test cases
+        return (score1, score2, score4)
+
 
     def testcase_compare(self, a, b):
         a_score = self.get_score(a)
@@ -232,16 +244,16 @@ class AvgBugPotentialOracle:
             except KeyError:
                 edge_ids = []
             try:
-                block_id = stat['interesting_block']
+                block_ids = stat['interesting_blocks']
             except KeyError:
-                block_id = None
+                block_ids = None
             score = stat['score']
             input_file = stat['first_seen']
             if input_file not in result:
                 result[input_file] = {
                     'score': score,
                     'interesting_edges': edge_ids,
-                    'interesting_blocks': [block_id],
+                    'interesting_blocks': block_ids,
                     'size': stat['size'],
                     'input': input_file
                 }
